@@ -1,0 +1,13 @@
+[gd_resource type="Theme" format=3 uid="uid://2lbkcscp68ad"]
+
+[ext_resource type="FontFile" uid="uid://crn1rdv1alqxb" path="res://assets/fusion.ttf" id="1_5x3i2"]
+
+[resource]
+Button/font_sizes/font_size = 20
+Button/fonts/font = ExtResource("1_5x3i2")
+GridContainer/constants/h_separation = 10
+GridContainer/constants/v_separation = 6
+Label/font_sizes/font_size = 24
+Label/fonts/font = ExtResource("1_5x3i2")
+LineEdit/fonts/font = ExtResource("1_5x3i2")
+TextEdit/fonts/font = ExtResource("1_5x3i2")

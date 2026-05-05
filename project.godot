@@ -1,0 +1,40 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="maze-crosser"
+run/main_scene="uid://bvgiiddg3eyh2"
+config/features=PackedStringArray("4.6", "C#", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+GameProcessor="*uid://ynn3iha0wc2l"
+
+[dotnet]
+
+project/assembly_name="maze-crosser"
+
+[layer_names]
+
+2d_physics/layer_1="block"
+2d_physics/layer_2="player"
+2d_physics/layer_3="target"
+
+[physics]
+
+2d/physics_engine="Rapier2D"
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+rendering_device/driver.windows="d3d12"

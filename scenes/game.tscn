@@ -1,0 +1,92 @@
+[gd_scene format=3 uid="uid://cqv2ij1pumt35"]
+
+[ext_resource type="Script" uid="uid://dweuurwe21f5q" path="res://scripts/Game.cs" id="1_uwrxv"]
+[ext_resource type="Texture2D" uid="uid://jp3le84mksth" path="res://assets/end_point.png" id="2_iywne"]
+[ext_resource type="Texture2D" uid="uid://nal4nap8oaef" path="res://assets/block.png" id="2_yqjtg"]
+[ext_resource type="Texture2D" uid="uid://ckbd0l2hqpb3u" path="res://assets/player.png" id="4_iywne"]
+[ext_resource type="Texture2D" uid="uid://c8ttcfi2glkrg" path="res://assets/arrow.png" id="4_lbhrr"]
+[ext_resource type="PackedScene" uid="uid://v35mdl0lal56" path="res://scenes/Panel.tscn" id="6_p57ef"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_p57ef"]
+texture = ExtResource("2_iywne")
+0:0/0 = 0
+0:0/0/physics_layer_1/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_lnu2h"]
+texture = ExtResource("2_yqjtg")
+0:0/0 = 0
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+
+[sub_resource type="TileSet" id="TileSet_8cj0n"]
+physics_layer_0/collision_layer = 1
+physics_layer_0/collision_mask = 0
+physics_layer_1/collision_layer = 4
+physics_layer_1/collision_mask = 2
+sources/1 = SubResource("TileSetAtlasSource_lnu2h")
+sources/0 = SubResource("TileSetAtlasSource_p57ef")
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_p57ef"]
+size = Vector2(16, 17)
+
+[node name="Game" type="Node2D" unique_id=1373939711]
+script = ExtResource("1_uwrxv")
+map_size = Vector2i(15, 15)
+start_point = Vector2i(1, 1)
+
+[node name="map" type="TileMapLayer" parent="." unique_id=1706815137]
+tile_set = SubResource("TileSet_8cj0n")
+
+[node name="player" type="CharacterBody2D" parent="." unique_id=969252465]
+position = Vector2(-12.2344055, 582.3673)
+collision_layer = 2
+collision_mask = 4
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="player" unique_id=2033816947]
+shape = SubResource("RectangleShape2D_p57ef")
+
+[node name="Icon" type="Sprite2D" parent="player" unique_id=1050102205]
+position = Vector2(3.8146973e-06, 1.9073486e-06)
+texture = ExtResource("4_iywne")
+
+[node name="camera" type="Camera2D" parent="player" unique_id=1934259326]
+zoom = Vector2(2, 2)
+limit_smoothed = true
+position_smoothing_enabled = true
+rotation_smoothing_enabled = true
+
+[node name="prompts" type="Node2D" parent="player" unique_id=2090330306]
+
+[node name="ArrowRight" type="Sprite2D" parent="player/prompts" unique_id=1170537382]
+position = Vector2(22.234406, -0.36730957)
+texture = ExtResource("4_lbhrr")
+
+[node name="ArrowLeft" type="Sprite2D" parent="player/prompts" unique_id=1552533579]
+position = Vector2(-22.765594, -0.36730957)
+rotation = 3.1415925
+texture = ExtResource("4_lbhrr")
+
+[node name="ArrowTop" type="Sprite2D" parent="player/prompts" unique_id=1079829829]
+position = Vector2(0.23440552, -22.36731)
+rotation = -1.5707964
+texture = ExtResource("4_lbhrr")
+
+[node name="ArrowBottom" type="Sprite2D" parent="player/prompts" unique_id=1861834010]
+position = Vector2(0.23440552, 21.63269)
+rotation = 1.5707964
+texture = ExtResource("4_lbhrr")
+
+[node name="panel" type="CanvasLayer" parent="." unique_id=1193778795]
+layer = 3
+
+[node name="Panel" parent="panel" unique_id=1592677227 instance=ExtResource("6_p57ef")]
+visible = false
+
+[node name="TextureRect" type="TextureRect" parent="panel" unique_id=1088517100]
+modulate = Color(1, 1, 1, 0)
+z_index = 1000
+offset_left = -1105.0
+offset_top = -873.0
+offset_right = 2695.0
+offset_bottom = 1612.0
+mouse_filter = 2
+texture = ExtResource("4_iywne")

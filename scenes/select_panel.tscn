@@ -1,0 +1,76 @@
+[gd_scene format=3 uid="uid://c87fb02po75k4"]
+
+[ext_resource type="Theme" uid="uid://2lbkcscp68ad" path="res://assets/theme.tres" id="1_bi1ey"]
+[ext_resource type="Script" uid="uid://cendfi30ukkyu" path="res://scripts/SelectPanel.cs" id="2_at8hh"]
+
+[node name="SelectPanel" type="Control" unique_id=564635919]
+layout_mode = 3
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_bi1ey")
+script = ExtResource("2_at8hh")
+
+[node name="V" type="VBoxContainer" parent="." unique_id=1881941140]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -65.5
+offset_top = -74.5
+offset_right = 65.5
+offset_bottom = 35.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="V" unique_id=1147752150]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "请设置地图"
+
+[node name="Panel" type="PanelContainer" parent="V" unique_id=1086726146]
+layout_mode = 2
+
+[node name="Grid" type="GridContainer" parent="V/Panel" unique_id=2108846970]
+layout_mode = 2
+columns = 2
+
+[node name="Width" type="Label" parent="V/Panel/Grid" unique_id=690500818]
+layout_mode = 2
+text = "宽"
+
+[node name="SpinBox" type="SpinBox" parent="V/Panel/Grid" unique_id=2146084401]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 5.0
+value = 5.0
+
+[node name="Height" type="Label" parent="V/Panel/Grid" unique_id=416521147]
+layout_mode = 2
+text = "高"
+
+[node name="SpinBox2" type="SpinBox" parent="V/Panel/Grid" unique_id=1478490930]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 5.0
+value = 5.0
+
+[node name="H" type="HBoxContainer" parent="V" unique_id=1024286699]
+layout_mode = 2
+alignment = 1
+
+[node name="Next" type="Button" parent="V/H" unique_id=1949198376]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "生成!"
+
+[node name="Cancel" type="Button" parent="V/H" unique_id=1156079667]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "取消"
