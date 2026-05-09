@@ -10,23 +10,40 @@ public partial class Start : Control
 	private Button start;
 
 	private SelectPanel select;
+	private TextureRect mask;
 	public override void _Ready()
 	{
 		title = GetNode<Label>("V/Title");
 		start = GetNode<Button>("V/Start");
 		select = GetNode<SelectPanel>("SelectPanel");
+		mask = GetNode<TextureRect>("Mask");
 		title.VisibleRatio=0.0f;
+		mask.Show();
+		mask.Modulate= new Color(0xFFFFFFFF);
 		title.Modulate= new Color(0xFFFFFF00);
 		start.Modulate= new Color(0xFFFFFF00);
 		var t=CreateTween();
+		t.TweenProperty(mask,"modulate:a",0.0,0.5f).SetTrans(Tween.TransitionType.Cubic);
 		t.TweenProperty(title,"visible_ratio",1.0f,0.5f).SetTrans(Tween.TransitionType.Cubic);
-		t.TweenProperty(title,"modulate",new Color(0xFFFFFFFF),0.5f).SetTrans(Tween.TransitionType.Cubic);
+		t.Parallel().TweenProperty(title,"modulate",new Color(0xFFFFFFFF),0.5f).SetTrans(Tween.TransitionType.Cubic);
 		t.TweenInterval(0.5f);
 		t.TweenProperty(start,"modulate",new Color(0xFFFFFFFF),0.5f).SetTrans(Tween.TransitionType.Cubic);
 		start.Connect("pressed",Callable.From(OnStart));
 		select.Connect(SelectPanel.SignalName.Canceled,Callable.From(OnCancel));
+		select.Connect(SelectPanel.SignalName.Next,Callable.From(OnNext));
 	}
-
+	private void OnNext()
+	{
+		var t=CreateTween();
+		t.TweenProperty(select,"modulate:a",0.0f,0.5f).SetTrans(Tween.TransitionType.Cubic);
+		mask.Show();
+		mask.Modulate= new Color(0xFFFFFF00);
+		t.TweenProperty(mask,"modulate:a",1.0f,0.5f).SetTrans(Tween.TransitionType.Cubic);
+		t.TweenCallback(Callable.From(() =>
+		{
+			GameProcessor.Instance.ChangeScene("res://scenes/game.tscn");
+		}));
+	}
 	private void OnCancel()
 	{
 		title.Show();
@@ -34,7 +51,7 @@ public partial class Start : Control
 		title.VisibleRatio=0.0f;
 		var t=CreateTween();
 		t.TweenProperty(title,"visible_ratio",1.0f,0.5f).SetTrans(Tween.TransitionType.Cubic);
-		t.TweenProperty(title,"modulate",new Color(0xFFFFFFFF),0.5f).SetTrans(Tween.TransitionType.Cubic);
+		t.Parallel().TweenProperty(title,"modulate",new Color(0xFFFFFFFF),0.5f).SetTrans(Tween.TransitionType.Cubic);
 		t.TweenInterval(0.5f);
 		t.TweenProperty(start,"modulate",new Color(0xFFFFFFFF),0.5f).SetTrans(Tween.TransitionType.Cubic);
 	}

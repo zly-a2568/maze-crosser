@@ -7,6 +7,8 @@ public partial class SelectPanel : Control
 	private Button next,cancel;
 	[Signal]
 	public delegate void CanceledEventHandler();
+	[Signal]
+	public delegate void NextEventHandler();
 	public override void _Ready()
 	{
 		next=GetNode<Button>("V/H/Next");
@@ -24,7 +26,7 @@ public partial class SelectPanel : Control
 		t.TweenCallback(Callable.From(() =>
 		{
 			Hide();
-			GameProcessor.Instance.ChangeScene("res://scenes/game.tscn");
+			EmitSignal(SelectPanel.SignalName.Next);
 		}));
 	}
 	public void OnCancel()

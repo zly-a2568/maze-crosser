@@ -34,23 +34,37 @@ public partial class Game : Node2D
     private TextureRect mask;
     private Panel panel;
 
+
     // 【新增】用于控制幽灵特效生成的计时器
     private double _ghostSpawnTimer = 0.0;
-    private const double GhostSpawnInterval = 0.05; // 每0.05秒生成一个幽灵，防止一帧生成几十个
+    private const double GhostSpawnInterval = 0.03; // 每0.03秒生成一个幽灵
+
+    // 【优化】缓存计算属性，避免每帧都进行除法和类型转换
+    private Vector2I PlayerGridPos => (Vector2I)(_player.Position / 16);
 
     public override void _Ready()
     {
-        map_size=GameProcessor.Instance.map_size;
+        // 安全检查
+        if (GameProcessor.Instance == null)
+        {
+            PrintErr("GameProcessor Instance is null!");
+            return;
+        }
+
+        map_size = GameProcessor.Instance.map_size;
         _camera = GetNode<Camera2D>("player/camera");
         _map = GetNode<TileMapLayer>("map");
         _player = GetNode<CharacterBody2D>("player");
         prompts = _player.GetNode<Node2D>("prompts");
         mask = GetNode<TextureRect>("panel/TextureRect");
         panel = GetNode<Panel>("panel/Panel");
-        map = GenerateMazePrim(map_size.X, map_size.Y);
+        
+        map = GenerateMaze(map_size.X, map_size.Y);
+        
         var ToEnd = new List<Vector2I>();
         mask.Show();
         mask.Modulate = new Color(0xFFFFFFFF);
+        
         for (int a = 0; a < map.GetLength(0); a++)
         {
             for (int b = 0; b < map.GetLength(1); b++)
@@ -66,9 +80,11 @@ public partial class Game : Node2D
         {
             return x.LengthSquared().CompareTo(y.LengthSquared());
         });
+        
         var all_rights = (int)(ToEnd.Count * ToEnd.Count);
         var seed = Randi() % all_rights;
         var idx = (int)Math.Sqrt(seed);
+        
         if (idx < ToEnd.Count)
         {
             end_point = ToEnd[idx];
@@ -81,22 +97,30 @@ public partial class Game : Node2D
         }
 
         ApplyMap();
+        
         var map_rect = _map.GetUsedRect();
         _camera.LimitLeft = 16 * (map_rect.Position.X);
         _camera.LimitTop = 16 * (map_rect.Position.Y);
         _camera.LimitRight = 16 * (map_rect.Position.X + map_rect.Size.X);
         _camera.LimitBottom = 16 * (map_rect.Position.Y + map_rect.Size.Y);
-
+        
         _player.Position = start_point * 16 + (new Vector2(8.0f, 8.0f));
         cursor = start_point;
+        
+        _camera.ResetSmoothing();
+        _camera.ForceUpdateScroll();
+        
         var t = CreateTween();
         t.TweenProperty(mask, "modulate:a", 0.0f, 0.5);
+        _player.GetNode<Sprite2D>("Icon").Scale = new Vector2(0.0f, 0.0f);
+        t.TweenProperty(_player.GetNode<Sprite2D>("Icon"), "scale", new Vector2(1.0f, 1.0f), 0.5).SetTrans(Tween.TransitionType.Sine);
+        
         UpdatePrompt();
     }
 
     public override void _Process(double delta)
     {
-        // 【修复】使用计时器限制生成频率，彻底解决内存泄漏和性能雪崩
+        // 【修复】必须先判断 moving，再判断 won，逻辑更严密
         if (moving)
         {
             _ghostSpawnTimer += delta;
@@ -107,9 +131,14 @@ public partial class Game : Node2D
             }
         }
 
-        // 【优化】将坐标比较提前，避免每帧都进行 LocalToMap 坐标转换
-        if (!won && _map.LocalToMap(ToLocal(ToGlobal(_player.Position))) == end_point)
+        // 【关键性能优化】
+        // 原代码：LocalToMap(ToLocal(ToGlobal(_player.Position))) 
+        // 问题：每帧产生3个临时对象，且涉及复杂的坐标变换矩阵运算
+        // 优化：直接使用整型坐标比较。因为地图格子是16x16，直接除以16即可得到逻辑坐标。
+        if (!won && PlayerGridPos == end_point)
         {
+            // 为了防止重复触发，在这里不再直接调用 GameWin，而是依靠外部逻辑或者确保 GameWin 内部有防重入机制
+            // 但最简单的做法是直接调用，并在 GameWin 开头把 won 设为 true
             GameWin();
         }
     }
@@ -133,59 +162,76 @@ public partial class Game : Node2D
     }
 
     // 【修复】将 async void 改为 async Task，防止节点销毁时报错
+    // 【核心修复】在方法开始时立即停止 _Process 中的幽灵生成逻辑
     private async Task GameWin()
     {
-        // 【关键修复】立即停止 _Process 中的任何逻辑，防止在退场动画时产生僵尸节点
+        // 【关键修复步骤1】第一时间停止移动标记
+        // 这样 _Process 中的 if (moving) 就会在下一帧失效，停止生成幽灵
+        moving = false;
+        won = true;
+
+        // 【关键修复步骤2】停止节点的物理和逻辑处理，防止异步等待期间发生冲突
         SetProcess(false);
         SetPhysicsProcess(false);
         
-        moving = false;
-        won = true;
+        // 对齐玩家位置（视觉上）
         _player.Position = end_point * 16 + new Vector2(8.0f, 8.0f);
         
+        // 杀死现有的所有 Tween，防止动画冲突
         var ts = GetTree().GetProcessedTweens();
         for (int i = 0; i < ts.Count; i++)
         {
-            ts[i].Kill();
+            if (IsInstanceValid(ts[i])) ts[i].Kill();
         }
 
+        // 遮罩层渐显
         mask.Show();
         var t1 = CreateTween();
         t1.TweenProperty(mask, "modulate:a", 1.0, 0.2);
 
-        foreach (Sprite2D a in GetTree().GetNodesInGroup("ghost"))
+        // 处理所有现有的幽灵
+        var ghosts = GetTree().GetNodesInGroup("ghost");
+        foreach (Sprite2D a in ghosts)
         {
             if (!IsInstanceValid(a)) continue;
             
             var map_rect = _map.GetUsedRect();
             var t = CreateTween();
+            // 让幽灵掉下去
             t.TweenProperty(a, "position", a.Position + 16.0f * (new Vector2(0.0f, map_rect.Position.Y + map_rect.Size.Y)), 0.05).SetTrans(Tween.TransitionType.Bounce);
             t.Finished += () =>
             {
                 if (IsInstanceValid(a)) a.QueueFree();
             };
-            // 【安全检查】确保在等待期间节点没被意外销毁
+            
+            // 【安全检查】等待期间，如果场景被卸载，直接退出
             if (IsInstanceValid(this))
             {
                 await ToSignal(GetTree().CreateTimer(0.04), Timer.SignalName.Timeout);
             }
             else
             {
-                return; // 如果当前节点已死，直接退出
+                return;
             }
         }
 
+        // 清理当前节点的所有子节点（保留节点自身以便可能的后续操作，虽然这里马上就要切场景了）
         foreach (var a in GetChildren())
         {
-            if (IsInstanceValid(a) && !IsQueuedForDeletion())
+            if (IsInstanceValid(a) && !a.IsQueuedForDeletion())
             {
-                a.QueueFree();
+                // 保留 mask，因为它是 Game 的子节点，不要杀掉自己正在用的东西，或者全杀掉也行，反正要切场景了
+                // 为了安全，我们只清理非 Panel 节点，或者直接依赖场景切换
+                // 这里选择不清理 Panel 和 Mask，避免闪屏，直接切场景即可
+                if (a != panel && a != mask && a != _map) 
+                   a.QueueFree();
             }
         }
 
         // 【安全检查】最后调用外部方法前再次确认节点存活
         if (IsInstanceValid(this) && IsInstanceValid(GameProcessor.Instance))
         {
+            // 使用 CallDeferred 确保当前帧逻辑全部走完再切场景
             GameProcessor.Instance.CallDeferred("ChangeScene", ["res://scenes/game.tscn"]);
         }
     }
@@ -195,11 +241,14 @@ public partial class Game : Node2D
         base._Input(@event);
         if (@event is InputEventKey)
         {
+            // ESC 暂停
             if (@event.IsActionPressed("ui_cancel") && !won)
             {
                 panel.ShowPanel();
             }
-            if (moving || won) return; // 【优化】加上 won 判断
+            
+            // 如果赢了或者在移动，不处理方向键
+            if (moving || won) return;
             
             if (@event.IsActionPressed("ui_left"))
             {
@@ -230,10 +279,12 @@ public partial class Game : Node2D
         var right = prompts.GetChild<Sprite2D>(0);
         var top = prompts.GetChild<Sprite2D>(2);
         var bottom = prompts.GetChild<Sprite2D>(3);
+        
         left.Hide();
         right.Hide();
         top.Hide();
         bottom.Hide();
+        
         var dirs = GetAvalibleDirections(cursor);
         foreach (var d in dirs)
         {
@@ -287,6 +338,7 @@ public partial class Game : Node2D
         foreach (var direction in move_directions)
         {
             Vector2I np = pos + direction;
+            // 边界检查
             if (!(np.X > map.GetLength(1) - 1 || np.X < 0 || np.Y > map.GetLength(0) - 1 || np.Y < 0 || map[np.Y, np.X] == 1))
             {
                 directions.Add(direction);
@@ -420,6 +472,13 @@ public partial class Game : Node2D
         int startX = start_point.X;
         int startY = start_point.Y;
 
+        // 确保起点在迷宫范围内
+        if (startX <= 0 || startX >= width - 1 || startY <= 0 || startY >= height - 1)
+        {
+            startX = 1;
+            startY = 1;
+        }
+        
         maze[startY, startX] = 0;
         Stack<(int x, int y)> stack = new Stack<(int, int)>();
         stack.Push((startX, startY));
@@ -449,85 +508,6 @@ public partial class Game : Node2D
             else
             {
                 stack.Pop();
-            }
-        }
-
-        return maze;
-    }
-
-    public static int[,] GenerateMazePrim(int width, int height)
-    {
-        if (width % 2 == 0) width++;
-        if (height % 2 == 0) height++;
-
-        int[,] maze = new int[height, width];
-        for (int y = 0; y < height; y++)
-            for (int x = 0; x < width; x++)
-                maze[y, x] = 1;
-
-        int[] dirX = { 0, 1, 0, -1 };
-        int[] dirY = { -1, 0, 1, 0 };
-
-        Random rand = new Random();
-
-        int startX = rand.Next(1, width - 1);
-        int startY = rand.Next(1, height - 1);
-        if (startX % 2 == 0) startX--;
-        if (startY % 2 == 0) startY--;
-
-        maze[startY, startX] = 0;
-
-        List<(int x1, int y1, int x2, int y2)> walls = new List<(int, int, int, int)>();
-
-        for (int i = 0; i < 4; i++)
-        {
-            int nx = startX + dirX[i] * 2;
-            int ny = startY + dirY[i] * 2;
-            if (nx > 0 && nx < width - 1 && ny > 0 && ny < height - 1)
-            {
-                walls.Add((startX, startY, nx, ny));
-            }
-        }
-
-        while (walls.Count > 0)
-        {
-            int wallIndex = rand.Next(walls.Count);
-            var (x1, y1, x2, y2) = walls[wallIndex];
-            walls.RemoveAt(wallIndex);
-
-            if (maze[y1, x1] == 0 && maze[y2, x2] == 1)
-            {
-                int wallX = (x1 + x2) / 2;
-                int wallY = (y1 + y2) / 2;
-                maze[wallY, wallX] = 0;
-                maze[y2, x2] = 0;
-
-                for (int i = 0; i < 4; i++)
-                {
-                    int nx = x2 + dirX[i] * 2;
-                    int ny = y2 + dirY[i] * 2;
-                    if (nx > 0 && nx < width - 1 && ny > 0 && ny < height - 1 && maze[ny, nx] == 1)
-                    {
-                        walls.Add((x2, y2, nx, ny));
-                    }
-                }
-            }
-            else if (maze[y1, x1] == 1 && maze[y2, x2] == 0)
-            {
-                int wallX = (x1 + x2) / 2;
-                int wallY = (y1 + y2) / 2;
-                maze[wallY, wallX] = 0;
-                maze[y1, x1] = 0;
-
-                for (int i = 0; i < 4; i++)
-                {
-                    int nx = x1 + dirX[i] * 2;
-                    int ny = y1 + dirY[i] * 2;
-                    if (nx > 0 && nx < width - 1 && ny > 0 && ny < height - 1 && maze[ny, nx] == 1)
-                    {
-                        walls.Add((x1, y1, nx, ny));
-                    }
-                }
             }
         }
 

@@ -3,6 +3,7 @@
 [ext_resource type="Theme" uid="uid://2lbkcscp68ad" path="res://assets/theme.tres" id="1_jaeev"]
 [ext_resource type="Script" uid="uid://g18eqtj6rhdt" path="res://scripts/Start.cs" id="2_u80x2"]
 [ext_resource type="PackedScene" uid="uid://c87fb02po75k4" path="res://scenes/select_panel.tscn" id="3_bodal"]
+[ext_resource type="Texture2D" uid="uid://ckbd0l2hqpb3u" path="res://assets/player.png" id="4_kdmts"]
 
 [node name="Start" type="Control" unique_id=891332469]
 layout_mode = 3
@@ -51,3 +52,14 @@ text = "开始"
 visible = false
 layout_mode = 1
 scale = Vector2(1.5, 1.5)
+
+[node name="Mask" type="TextureRect" parent="." unique_id=751209855]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("4_kdmts")

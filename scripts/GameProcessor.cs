@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Threading.Tasks;
 
 public partial class GameProcessor : Node
 {
@@ -19,10 +20,12 @@ public partial class GameProcessor : Node
 
 	public void ChangeScene(string path)
 	{
+		GetTree().Paused=true;
 		var current=GetTree().CurrentScene;
-		current.Free();
+		current.QueueFree();
 		var nextScene=GD.Load<PackedScene>(path).Instantiate();
 		GetTree().Root.AddChild(nextScene);
 		GetTree().CurrentScene=nextScene;
+		GetTree().Paused=false;
 	}
 }
